@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { App } = require("@slack/bolt");
 const { Client, LogLevel } = require("@notionhq/client");
 const { translateText } = require("./src/translator");

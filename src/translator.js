@@ -1,3 +1,4 @@
+require("dotenv").config();
 const deepl = require("deepl-node");
 // Note that developer account is required for this
 const translator = new deepl.Translator(process.env.DEEPL_API_TOKEN);
