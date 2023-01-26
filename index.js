@@ -1,14 +1,14 @@
-require("dotenv").config();
 const { App } = require("@slack/bolt");
+const { translateText } = require("./translator");
+const {chunk} = require("lodash");
+const { removeUnecessaryProperties } = require("./utils");
 const { Client, LogLevel } = require("@notionhq/client");
-const { translateText } = require("./src/translator");
-const { removeUnecessaryProperties } = require("./src/utils");
 const notion = new Client({
     auth: process.env.NOTION_API_TOKEN,
     logLevel: LogLevel.DEBUG,
 });
 
-const debug = true;
+const debug = false;
 let from = null;
 let to = null;
 
@@ -16,6 +16,8 @@ const app = new App({
     signingSecret: process.env.SLACK_SIGNING_SECRET,
     token: process.env.SLACK_BOT_TOKEN,
 });
+
+let currentProcessPageId = '';
 
 /**
  * @notice Translate the specified page and return the translated page URL
@@ -225,13 +227,21 @@ app.message(async ({ message, say }) => {
     }
     const pageId = message.text.split('/').pop().split("-").pop().replace(/\>$/, "");
 
-    await say(`<@${message.user}> ${pageId} の翻訳を開始しました。完了したら再度通知します`);
+    //Glitchの仕様でスリープからの起動時に3回実行されてしまうので、　同じページを同時に処理しないように修正
+    if(currentProcessPageId === pageId){
+        return;
+    }
+    currentProcessPageId = pageId;
+    await say(`${pageId} の翻訳を開始しました。完了したら再度通知します`);
+
     await main(pageId)
         .then(async (result) => {
             await say(`<@${message.user}> 翻訳が完了しました！ 次のURLから確認できます。\n${result.newPageUrl}`);
         })
         .catch(async (error) => {
             await say(`<@${message.user}> 翻訳時にエラーが発生しました\n${JSON.stringify(error)}`);
+        }).finally(async () => {
+            currentProcessPageId = '';
         });
 });
 //アプリが起動時に呼ばれるメソッド
