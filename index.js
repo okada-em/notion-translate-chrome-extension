@@ -49,11 +49,14 @@ const main = async (pageId) => {
 
     const translatedBlocks = await buildTranslatedBlocks(originalPage.id, 0);
     const newPage = await createNewPageForTranslation(originalPage);
-    const blocksAppendParams = {
-        block_id: newPage.id,
-        children: translatedBlocks,
-    };
-    await notion.blocks.children.append(blocksAppendParams);
+    await chunk(translatedBlocks, 50).reduce((promise, blocks) => {
+        return promise.then(async () => {
+            await notion.blocks.children.append({
+                block_id: newPage.id,
+                children: blocks,
+            })
+        });
+    }, Promise.resolve());
     from = to = null;
     return { newPageUrl: newPage.url };
 };
